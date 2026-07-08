@@ -1,0 +1,46 @@
+name: Discord Quest Tracker
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'  # Run every 5 minutes
+  workflow_dispatch:       # Manual trigger
+
+jobs:
+  track-quests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install --production
+
+      - name: Run quest tracker
+        env:
+          DISCORD_TOKEN: ${{ secrets.DISCORD_TOKEN }}
+          MAIN_WEBHOOK: ${{ secrets.MAIN_WEBHOOK }}
+          ERROR_WEBHOOK: ${{ secrets.ERROR_WEBHOOK }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPOSITORY: ${{ github.repository }}
+          LOCALE: ${{ vars.LOCALE || 'en-US' }}
+          PING_ROLE_ID: ${{ vars.PING_ROLE_ID }}
+        run: node src/main.js
+
+      - name: Commit state changes
+        run: |
+          git config user.name "Discord Quests Bot"
+          git config user.email "bot@discordquests.dev"
+          git add state.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update quest state [skip ci]" && git push)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
