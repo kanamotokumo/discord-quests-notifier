@@ -14,16 +14,29 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '24'
           cache: 'npm'
 
-      - name: Install dependencies
-        run: npm install --production
+      - name: Install dependencies (create lockfile if missing)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          if [ -f package-lock.json ]; then
+            npm ci --only=production
+          else
+            npm install --production
+            # Commit package-lock.json back to the repo so future runs can use npm ci
+            git config user.name "Discord Quests Bot"
+            git config user.email "bot@discordquests.dev"
+            git add package-lock.json || true
+            git diff --quiet -- package-lock.json || (git commit -m "chore: add package-lock.json [skip ci]" package-lock.json && git push)
+          fi
 
       - name: Run quest tracker
         env:
@@ -43,4 +56,4 @@ jobs:
           git add state.json
           git diff --quiet && git diff --staged --quiet || (git commit -m "chore: update quest state [skip ci]" && git push)
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
