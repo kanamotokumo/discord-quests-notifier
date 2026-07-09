@@ -5,18 +5,27 @@ import { formatDate, formatDateTime, getReward, buildChangeDescription } from '.
 /**
  * Build embed for NEW quest
  */
-export async function buildNewQuestEmbed(content, quest, assets) {
+export async function buildNewQuestEmbed(content, quest, assets, pingRoleId) {
     const config = quest.config;
     if (!config) return null;
 
     const embed = [];
     const subComponents = [];
-    
+
+    const questId = quest.id || '';
+    const questLink = `https://canary.discord.com/quests/${questId}`;
+
+    // Ping role nếu có
+    let pingMessage = null;
+    if (pingRoleId) {
+        pingMessage = `<@&${PING_ROLE_ID}> Nhiệm Vụ mới đã đến !!! [Click vào đây để làm nhiệm vụ](${questLink})`;
+    }
+
     if (content) subComponents.push({ type: 10, content });
 
     const durationStr = `${formatDate(config.starts_at)} - ${formatDate(config.expires_at)}`;
     let videoUrl;
-    
+
     const taskList = Object.values(config.task_config_v2?.tasks || {})
         .map(task => {
             const minutes = task.target ? task.target / 60 : 0;
@@ -50,24 +59,22 @@ export async function buildNewQuestEmbed(content, quest, assets) {
     const gameTitle = config.messages?.game_title || i18n.error.game_name;
     const gamePublisher = config.messages?.game_publisher || i18n.error.game_publisher;
 
-    const questId = quest.id || '';
-    const questLink = `https://canary.discord.com/quests/${questId}`;
-
     const applicationLink = config.application?.link || questLink || 'https://discord.com';
     const applicationName = config.application?.name || '';
     const applicationId = config.application?.id || '';
 
     const CDN_BASE = 'https://cdn.discordapp.com/';
     const heroUrl = config.assets?.hero ? `${CDN_BASE}${config.assets.hero}` : assets.discordQuests;
-    
+
     let currentRewardIconUrl = assets.rewardIconUrl;
     if (!rewardName.toLowerCase().includes('orb')) {
         currentRewardIconUrl = primaryReward?.asset ? (CDN_BASE + primaryReward.asset) : assets.emptyIconUrl;
     }
-    
+
     const currentRewardIcon = new URL(currentRewardIconUrl);
     currentRewardIcon.searchParams.append('format', 'webp');
 
+    // Embed chính
     subComponents.push(
         {
             type: 10,
@@ -168,25 +175,32 @@ export async function buildNewQuestEmbed(content, quest, assets) {
         flags: 1 << 15,
         username: i18n.name,
         components: embed,
-        avatar_url: assets.avatarWebhook
+        avatar_url: assets.avatarWebhook,
+        content: pingMessage || content || `Nhiệm vụ mới: [${questName}](${questLink})`
     };
 }
 
 /**
  * Build embed for UPDATED quest
  */
-export async function buildUpdatedQuestEmbed(content, oldQuest, newQuest, assets, changes) {
+export async function buildUpdatedQuestEmbed(content, oldQuest, newQuest, assets, changes, pingRoleId) {
     const config = newQuest.config;
     if (!config) return null;
 
     const embed = [];
     const subComponents = [];
 
-    if (content) subComponents.push({ type: 10, content });
-
     const questName = config.messages?.quest_name || i18n.error.new_quest;
     const questId = newQuest.id || '';
     const questLink = `https://canary.discord.com/quests/${questId}`;
+
+    // Ping role nếu có
+    let pingMessage = null;
+    if (pingRoleId) {
+        pingMessage = `<@&${PING_ROLE_ID}> Nhiệm Vụ đã cập nhật !!! [Click vào đây để xem chi tiết](${questLink})`;
+    }
+
+    if (content) subComponents.push({ type: 10, content });
 
     const changeDescription = buildChangeDescription(oldQuest, newQuest, changes);
 
@@ -238,6 +252,7 @@ export async function buildUpdatedQuestEmbed(content, oldQuest, newQuest, assets
         flags: 1 << 15,
         username: i18n.name,
         components: embed,
-        avatar_url: assets.avatarWebhook
+        avatar_url: assets.avatarWebhook,
+        content: pingMessage || content || `Nhiệm vụ đã cập nhật: [${questName}](${questLink})`
     };
-  } 
+}
