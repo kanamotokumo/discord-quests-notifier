@@ -1,145 +1,165 @@
-// ─── Embed Builder ────────────────────────────────────────────────────────
+// src/embed.js
 import { i18n } from './language.js';
 import { formatDate, getReward, buildChangeDescription } from './utils.js';
 
-const PING_ROLE_ID = process.env.PING_ROLE_ID;
+const PING_ROLE_ID = process.env.PING_ROLE_ID || '';
+
+/**
+ * Safe helpers
+ */
+function safeJoinArray(val, fallback = '???') {
+  if (!val) return fallback;
+  if (Array.isArray(val)) return val.join(', ');
+  return String(val);
+}
 
 /**
  * Build embed for NEW quest
  */
 export async function buildNewQuestEmbed(content, quest, assets) {
-    const config = quest.config;
-    if (!config) return null;
+  const config = quest?.config;
+  if (!config) return null;
 
-    const questId = quest.id || '';
-    const questLink = `https://canary.discord.com/quests/${questId}`;
+  const questId = quest.id || '';
+  const questName = config.messages?.quest_name || i18n.error.new_quest;
+  const questLink = `https://canary.discord.com/quests/${questId}`;
 
-    // Ping role hoặc fallback text
-    let baseContent = content || `Nhiệm vụ mới: ${config.messages?.quest_name || i18n.error.new_quest}`;
-    if (PING_ROLE_ID) {
-        baseContent = `<@&${PING_ROLE_ID}> Nhiệm Vụ mới đã đến !!! [Click vào đây để làm nhiệm vụ](${questLink})`;
-    }
+  // content (ping role or simple text). Ping role will handle link delivery.
+  let baseContent = content || `Nhiệm vụ mới: ${questName}`;
+  if (PING_ROLE_ID) {
+    baseContent = `<@&${PING_ROLE_ID}> Nhiệm Vụ mới đã đến !!! [Click vào đây để làm nhiệm vụ](${questLink})`;
+  }
 
-    const durationStr = `${formatDate(config.starts_at)} - ${formatDate(config.expires_at)}`;
-    const rewardDeadline = formatDate(config.rewards_config?.rewards_expire_at);
+  // Dates
+  const durationStr = `${formatDate(config.starts_at)} - ${formatDate(config.expires_at)}`;
+  const rewardDeadline = formatDate(config.rewards_config?.rewards_expire_at) || '???';
 
-    const primaryReward = config.rewards_config?.rewards?.[0];
-    const rewardName = primaryReward?.messages?.name || i18n.error.reward;
-    const skuId = primaryReward?.sku_id || '';
-    const rewards = getReward(primaryReward, rewardName);
+  // Platform and feature (robust extraction)
+  const platforms = safeJoinArray(config.platforms, config.platform || 'Đa nền tảng');
+  const features = safeJoinArray(config.features, config.feature || '???');
 
-    const questName = config.messages?.quest_name || i18n.error.new_quest;
-    const gameTitle = config.messages?.game_title || i18n.error.game_name;
-    const gamePublisher = config.messages?.game_publisher || i18n.error.game_publisher;
+  // Reward
+  const primaryReward = config.rewards_config?.rewards?.[0] || null;
+  const rewardName = primaryReward?.messages?.name || i18n.error.reward;
+  const skuId = primaryReward?.sku_id || '???';
+  const rewards = getReward(primaryReward, rewardName); // returns rewardType, extraReward, expires
 
-    const applicationLink = config.application?.link || questLink || 'https://discord.com';
-    const applicationName = config.application?.name || '';
-    const applicationId = config.application?.id || '';
-    const featureName = config.feature || '???';
+  // Reward image (show below embed description if exists)
+  const rewardImageUrl = primaryReward?.asset ? `https://cdn.discordapp.com/${primaryReward.asset}` : null;
 
-    // Hero image
-    const heroUrl = config.assets?.hero ? `https://cdn.discordapp.com/${config.assets.hero}` : assets.discordQuests;
+  // Game / Application
+  const gameTitle = config.messages?.game_title || i18n.error.game_name;
+  const gamePublisher = config.messages?.game_publisher || i18n.error.game_publisher;
+  const applicationName = config.application?.name || '???';
+  const applicationLink = config.application?.link || questLink;
+  const applicationId = config.application?.id || '';
 
-    // Reward image (nếu có)
-    const rewardImageUrl = primaryReward?.asset ? `https://cdn.discordapp.com/${primaryReward.asset}` : null;
+  // Hero image (will appear after description)
+  const heroUrl = config.assets?.hero ? `https://cdn.discordapp.com/${config.assets.hero}` : assets.discordQuests;
 
-    // Tasks
-    const taskList = Object.values(config.task_config_v2?.tasks || {})
-        .map(task => {
-            const minutes = task.target ? task.target / 60 : 0;
-            const taskName = task.type
-                .toLowerCase()
-                .replace(/_/g, ' ')
-                .replace(/^\w/, c => c.toUpperCase());
-            return `* ${taskName} (${minutes} phút)`;
-        })
-        .join('\n');
+  // Tasks list
+  const taskList = Object.values(config.task_config_v2?.tasks || {})
+    .map(task => {
+      const minutes = task.target ? Math.round(task.target / 60) : 0;
+      const taskType = String(task.type || '').toLowerCase().replace(/_/g, ' ');
+      const taskName = taskType ? taskType.replace(/^\w/, c => c.toUpperCase()) : 'Task';
+      return `* ${taskName} (${minutes} phút)`;
+    })
+    .join('\n') || '* ???';
 
-    const embed = {
-        title: `# Nhiệm Vụ Mới !!! - ${questName}`, // chỉ tên quest, không warp link
-        description: 
-`-# *Nếu như không thấy nhiệm vụ trong app Discord, trước hết phải khởi động lại ứng dụng. Nếu vẫn không thấy thì fake IP sang US, UK, v.v. Chúng tôi sẽ gửi thông báo về yêu cầu về IP vào mỗi buổi trưa (nếu có).*
+  // Build description: instruction first, then info sections
+  const description = [
+    `-# *Nếu như không thấy nhiệm vụ trong app Discord, trước hết phải khởi động lại ứng dụng. Nếu vẫn không thấy thì fake IP sang US, UK, v.v. Chúng tôi sẽ gửi thông báo về yêu cầu về IP vào mỗi buổi trưa (nếu có).*`,
+    '',
+    `## Thông tin nhiệm vụ`,
+    `**Thời hạn**: ${durationStr}`,
+    `**Hạn chót nhận thưởng**: ${rewardDeadline}`,
+    `**Nền tảng nhận**: ${platforms}`,
+    `**Game**: ${gameTitle} (${gamePublisher})`,
+    `**Application**: ${applicationName} (${applicationId})`,
+    `**Tính năng**: ${features}`,
+    '',
+    `## Yêu cầu`,
+    `Người dùng phải hoàn thành một trong các yêu cầu sau:`,
+    `${taskList}`,
+    '',
+    `## Phần thưởng`,
+    `**Loại phần thưởng**: ${rewards.rewardType}`,
+    `**ID SKU**: \`${skuId}\``,
+    `**Phần thưởng**: ${rewardName}${rewards.extraReward || ''}`,
+    `${rewards.expires || ''}`,
+    '',
+    `-# **ID Nhiệm vụ**: ${questId}`
+  ].join('\n');
 
-## Thông tin nhiệm vụ
-**Thời hạn**: ${durationStr}
-**Hạn chót nhận thưởng**: ${rewardDeadline}
-**Game**: ${gameTitle} (${gamePublisher})
-**Application**: [${applicationName}](${applicationLink}) (\`${applicationId}\`)
+  const embed = {
+    title: `${questName}`, // only name, no markdown header or link
+    description,
+    image: { url: heroUrl }, // hero image appears after description
+    footer: { text: `${i18n.quest_id}: ${questId}` }
+  };
 
-## Yêu cầu
-Người dùng phải hoàn thành một trong các yêu cầu sau:
-${taskList || '* ???'}
-
-## Phần thưởng
-**Loại phần thưởng**: ${rewards.rewardType}
-**ID SKU**: \`${skuId}\`
-**Phần thưởng**: ${rewardName}${rewards.extraReward}
-${rewards.expires}
-${primaryReward?.premium_orb_quantity ? `**Phần thưởng Nitro**: ${primaryReward.premium_orb_quantity}` : ''}
-
--# **ID Nhiệm vụ**: ${questId}`,
-        image: { url: heroUrl }, // hero image ở trên
-        footer: { text: `${i18n.quest_id}: ${questId}` }
+  // If reward image exists, attach it as a separate embed below (Discord supports multiple embeds)
+  const embeds = [embed];
+  if (rewardImageUrl) {
+    const rewardEmbed = {
+      description: `**Ảnh phần thưởng**`,
+      image: { url: rewardImageUrl }
     };
+    embeds.push(rewardEmbed);
+  }
 
-    // Nếu có ảnh phần thưởng thì thêm ở dưới
-    if (rewardImageUrl) {
-        embed.fields = [
-            {
-                name: 'Ảnh phần thưởng',
-                value: '\u200b',
-                inline: false
-            }
-        ];
-        embed.image = { url: rewardImageUrl };
-    }
-
-    return {
-        username: i18n.name,
-        avatar_url: assets.avatarWebhook,
-        content: baseContent,
-        embeds: [embed]
-    };
+  return {
+    username: i18n.name,
+    avatar_url: assets.avatarWebhook,
+    content: baseContent,
+    embeds
+  };
 }
 
 /**
  * Build embed for UPDATED quest
+ * Only list detected changes using buildChangeDescription
  */
 export async function buildUpdatedQuestEmbed(content, oldQuest, newQuest, assets, changes) {
-    const config = newQuest.config;
-    if (!config) return null;
+  const config = newQuest?.config;
+  if (!config) return null;
 
-    const questName = config.messages?.quest_name || i18n.error.new_quest;
-    const questId = newQuest.id || '';
-    const questLink = `https://canary.discord.com/quests/${questId}`;
+  const questId = newQuest.id || '';
+  const questName = config.messages?.quest_name || i18n.error.new_quest;
+  const questLink = `https://canary.discord.com/quests/${questId}`;
 
-    // Ping role hoặc fallback text
-    let baseContent = content || `Nhiệm vụ đã cập nhật: ${questName}`;
-    if (PING_ROLE_ID) {
-        baseContent = `<@&${PING_ROLE_ID}> Nhiệm Vụ đã cập nhật !!! [Click vào đây để xem chi tiết](${questLink})`;
-    }
+  let baseContent = content || `Nhiệm vụ đã cập nhật: ${questName}`;
+  if (PING_ROLE_ID) {
+    baseContent = `<@&${PING_ROLE_ID}> Nhiệm Vụ đã cập nhật !!! [Click vào đây để xem chi tiết](${questLink})`;
+  }
 
-    const heroUrl = config.assets?.hero ? `https://cdn.discordapp.com/${config.assets.hero}` : assets.discordQuests;
+  // Hero image
+  const heroUrl = config.assets?.hero ? `https://cdn.discordapp.com/${config.assets.hero}` : assets.discordQuests;
 
-    // Detect thay đổi
-    const changeDescription = buildChangeDescription(oldQuest, newQuest, changes);
+  // Detect changes description (only changed fields)
+  const changeDescription = buildChangeDescription(oldQuest, newQuest, changes) || 'Không có thay đổi';
 
-    const embed = {
-        title: `# Nhiệm Vụ Đã Được Cập Nhật - ${questName}`, // chỉ tên quest
-        description: 
-`-# *Nếu như không thấy nhiệm vụ trong app Discord, trước hết phải khởi động lại ứng dụng. Nếu vẫn không thấy thì fake IP sang US, UK, v.v. Chúng tôi sẽ gửi thông báo về yêu cầu về IP vào mỗi buổi trưa (nếu có).*
+  const description = [
+    `-# *Nếu như không thấy nhiệm vụ trong app Discord, trước hết phải khởi động lại ứng dụng. Nếu vẫn không thấy thì fake IP sang US, UK, v.v. Chúng tôi sẽ gửi thông báo về yêu cầu về IP vào mỗi buổi trưa (nếu có).*`,
+    '',
+    `## Thay đổi`,
+    `${changeDescription}`,
+    '',
+    `-# **ID Nhiệm vụ**: \`${questId}\``
+  ].join('\n');
 
-## Thay đổi
-${changeDescription || 'Không có thay đổi'}
+  const embed = {
+    title: `${questName}`, // only name
+    description,
+    image: { url: heroUrl },
+    footer: { text: `${i18n.quest_id}: ${questId}` }
+  };
 
--# **ID Nhiệm vụ**: \`${questId}\``,
-        image: { url: heroUrl }
-    };
-
-    return {
-        username: i18n.name,
-        avatar_url: assets.avatarWebhook,
-        content: baseContent,
-        embeds: [embed]
-    };
+  return {
+    username: i18n.name,
+    avatar_url: assets.avatarWebhook,
+    content: baseContent,
+    embeds: [embed]
+  };
 }
