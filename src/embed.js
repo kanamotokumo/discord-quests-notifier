@@ -93,7 +93,7 @@ export async function buildNewQuestEmbed(content, quest, assets) {
   ].join('\n');
 
   const embed = {
-    title: `${questName}`, // only name, no markdown header or link
+    title: `Nhiệm Vụ Mới Đã Đến !!! - ${questName}`, // only name, no markdown header or link
     description,
     image: { url: heroUrl }, // hero image appears after description
     footer: { text: `${i18n.quest_id}: ${questId}` }
@@ -150,7 +150,7 @@ export async function buildUpdatedQuestEmbed(content, oldQuest, newQuest, assets
   ].join('\n');
 
   const embed = {
-    title: `${questName}`, // only name
+    title: `Nhiệm Vụ Được Cập Nhật !!! - ${questName}`, // only name
     description,
     image: { url: heroUrl },
     footer: { text: `${i18n.quest_id}: ${questId}` }
