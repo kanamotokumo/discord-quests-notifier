@@ -2,7 +2,7 @@ name: Discord Quest Tracker
 
 on:
   schedule:
-    - cron: '0 */3 * * *'  # Chạy 3tiếng/1lần
+    - cron: '0 */3 * * *'  # Chạy 3 tiếng / 1 lần
   workflow_dispatch:       # Manual trigger
 
 permissions:
@@ -27,16 +27,28 @@ jobs:
           node-version: '24'
           cache: 'npm'
 
-      - name: Install dependencies (create lockfile if missing)
+      - name: Install dependencies (create lockfile if missing or fallback)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -e
+          # If lockfile exists try npm ci first for reproducible installs.
           if [ -f package-lock.json ]; then
-            npm ci --only=production
+            echo "package-lock.json found — attempting npm ci"
+            if npm ci --only=production; then
+              echo "npm ci succeeded"
+            else
+              echo "npm ci failed — falling back to npm install --production"
+              npm install --production
+              # Commit regenerated lockfile if it changed
+              git config user.name "Discord Quests Bot"
+              git config user.email "bot@discordquests.dev"
+              git add package-lock.json || true
+              git diff --quiet -- package-lock.json || (git commit -m "chore: regenerate package-lock.json [skip ci]" package-lock.json && git push)
+            fi
           else
+            echo "No package-lock.json — running npm install --production and committing lockfile"
             npm install --production
-            # Commit package-lock.json back to the repo so future runs can use npm ci
             git config user.name "Discord Quests Bot"
             git config user.email "bot@discordquests.dev"
             git add package-lock.json || true
@@ -56,14 +68,14 @@ jobs:
 
       - name: Commit state changes
         run: |
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-            git add state.json
+          git add state.json
 
-            if ! git diff --cached --quiet; then
-               git commit -m "chore: update quest state [skip ci]"
-               git push origin HEAD:${{ github.ref_name }}
-            else
-              echo "No state changes."
-            fi
+          if ! git diff --cached --quiet; then
+            git commit -m "chore: update quest state [skip ci]"
+            git push origin HEAD:${{ github.ref_name }}
+          else
+            echo "No state changes."
+          fi
