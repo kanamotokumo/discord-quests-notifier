@@ -70,10 +70,10 @@
                 }
               ],
               "external_ids": [
-                "PPSA28882_00",
                 "PPSA28881_00",
                 "PPSA28884_00",
-                "PPSA28883_00"
+                "PPSA28883_00",
+                "PPSA28882_00"
               ]
             }
           },
@@ -109,9 +109,10 @@
       },
       "hash": "eyJleHBpcmVzX2F0IjoiMjAyNi0wNy0xNFQwMDowMDowMCswMDowMCIsInN0YXJ0c19hdCI6IjIwMjYtMDYtMzBUMTc6MDA6MDArMDA6MDAiLCJyZXdhcmRfZXhwaXJlcyI6IjIwMjYtMDgtMTNUMDA6MDA6MDArMDA6MDAiLCJ0YXNrX2NvdW50IjozLCJyZXdhcmRfdHlwZSI6NCwic2t1X2lkIjoiMTI4Nzg4MTczOTUzMTk3NjgxNSJ9",
       "starts_at": "2026-06-30T17:00:00+00:00",
-      "expires_at": "2026-08-13T00:00:00+00:00",
+      "expires_at": "2026-07-14T00:00:00+00:00",
       "sent_at": "2026-07-13T01:20:51.355Z",
-      "type": "new"
+      "type": "updated",
+      "updated_at": "2026-07-13T02:53:14.970Z"
     },
     "1521699040776159282": {
       "id": "1521699040776159282",
@@ -381,5 +382,5 @@
       "type": "new"
     }
   },
-  "last_check": "2026-07-13T01:20:56.153Z"
+  "last_check": "2026-07-13T02:53:16.072Z"
 }
