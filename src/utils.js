@@ -83,7 +83,6 @@ export function detectQuestChanges(oldQuest, newQuest) {
   const oldConfig = (oldQuest && oldQuest.config) ? oldQuest.config : (oldQuest || {});
   const newConfig = newQuest?.config || {};
 
-  // starts_at / expires_at
   if ((oldConfig.starts_at || '') !== (newConfig.starts_at || '')) {
     changes.starts_at = true;
   }
@@ -91,14 +90,12 @@ export function detectQuestChanges(oldQuest, newQuest) {
     changes.expires_at = true;
   }
 
-  // reward expiration
   const oldRewardExp = oldConfig.rewards_config?.rewards_expire_at || '';
   const newRewardExp = newConfig.rewards_config?.rewards_expire_at || '';
   if (oldRewardExp !== newRewardExp) {
     changes.reward_expires = true;
   }
 
-  // task count and detailed task changes
   const oldTasks = oldConfig.task_config_v2?.tasks || {};
   const newTasks = newConfig.task_config_v2?.tasks || {};
   const oldTaskCount = Object.keys(oldTasks).length;
@@ -114,7 +111,6 @@ export function detectQuestChanges(oldQuest, newQuest) {
     }
   }
 
-  // reward type and sku
   const oldReward = oldConfig.rewards_config?.rewards?.[0] || {};
   const newReward = newConfig.rewards_config?.rewards?.[0] || {};
   if ((oldReward.type || '') !== (newReward.type || '')) {
@@ -124,7 +120,6 @@ export function detectQuestChanges(oldQuest, newQuest) {
     changes.sku_id = true;
   }
 
-  // hero image / hero video
   const oldHero = oldConfig.assets?.hero || '';
   const newHero = newConfig.assets?.hero || '';
   if (oldHero !== newHero) {
@@ -136,28 +131,24 @@ export function detectQuestChanges(oldQuest, newQuest) {
     changes.hero_video = true;
   }
 
-  // quest name
   const oldName = oldConfig.messages?.quest_name || '';
   const newName = newConfig.messages?.quest_name || '';
   if (oldName !== newName) {
     changes.quest_name = true;
   }
 
-  // features (array or string)
   const oldFeatures = Array.isArray(oldConfig.features) ? oldConfig.features.join(',') : String(oldConfig.features || '');
   const newFeatures = Array.isArray(newConfig.features) ? newConfig.features.join(',') : String(newConfig.features || '');
   if (oldFeatures !== newFeatures) {
     changes.features = true;
   }
 
-  // application id
   const oldAppId = oldConfig.application?.id || '';
   const newAppId = newConfig.application?.id || '';
   if (oldAppId !== newAppId) {
     changes.application_id = true;
   }
 
-  // cta link
   const oldCta = oldConfig.cta_config?.link || '';
   const newCta = newConfig.cta_config?.link || '';
   if (oldCta !== newCta) {
@@ -168,9 +159,17 @@ export function detectQuestChanges(oldQuest, newQuest) {
 }
 
 /**
- * Build change description for embed
- * Only include lines for fields that actually changed (based on changes flags)
- * Format: show old value struck-through (~~old~~) then arrow → then new value
+ * Build change description for embed.
+ * Only include lines for fields that actually changed. Every label below is
+ * either a real vi-VN.json key, or (where no such key exists —
+ * hero_image/hero_video/quest_name/features/application_id/cta_link, and
+ * reward type/sku which now share the single real `reward_changed` key)
+ * a safe hardcoded Vietnamese fallback via `|| '...'`, so a missing
+ * translation renders as reasonable text instead of "undefined" —
+ * the previous version referenced i18n.task_keys_old, task_keys_new,
+ * reward_type_changed, sku_changed, hero_image_changed, hero_video_changed,
+ * quest_name_changed, features_changed, application_changed and cta_changed,
+ * none of which exist in your language file.
  */
 export function buildChangeDescription(oldQuest, newQuest, changes) {
   const oldConfig = (oldQuest && oldQuest.config) ? oldQuest.config : (oldQuest || {});
@@ -201,10 +200,9 @@ export function buildChangeDescription(oldQuest, newQuest, changes) {
     const oldKeys = Object.keys(oldTasks);
     const newKeys = Object.keys(newTasks);
 
-    if (JSON.stringify(oldKeys) !== JSON.stringify(newKeys)) {
+    if (JSON.stringify(oldKeys.slice().sort()) !== JSON.stringify(newKeys.slice().sort())) {
       lines.push(`**${i18n.task_count_changed}:** ~~${oldKeys.length}~~ → ${newKeys.length}`);
-      lines.push(`**${i18n.task_keys_old}:** ~~${oldKeys.length ? oldKeys.join(', ') : '—'}~~`);
-      lines.push(`**${i18n.task_keys_new}:** ${newKeys.length ? newKeys.join(', ') : '—'}`);
+      lines.push(`~~${oldKeys.length ? oldKeys.join(', ') : '—'}~~ → ${newKeys.length ? newKeys.join(', ') : '—'}`);
     } else {
       const diffs = [];
       for (const k of newKeys) {
@@ -213,64 +211,63 @@ export function buildChangeDescription(oldQuest, newQuest, changes) {
         const oStr = stableStringify({ type: o.type, target: o.target, assets: o.assets || null });
         const nStr = stableStringify({ type: n.type, target: n.target, assets: n.assets || null });
         if (oStr !== nStr) {
-          diffs.push(`- ${k}: ~~${o.type || '—'} (${o.target || 0})~~ → ${n.type || '—'} (${n.target || 0})`);
+          diffs.push(`- ${k}: ~~${o.type || '—'} (${o.target || 0}s)~~ → ${n.type || '—'} (${n.target || 0}s)`);
         }
       }
       if (diffs.length) {
-        lines.push(`**${i18n.task_changes}:**`);
-        lines.push(diffs.join('\n'));
+        lines.push(`**${i18n.task_count_changed}:**\n${diffs.join('\n')}`);
       } else {
         lines.push(`**${i18n.task_count_changed}:** ~~${oldKeys.length}~~ → ${newKeys.length}`);
       }
     }
   }
 
-  if (changes.reward_type) {
-    const oldType = oldConfig.rewards_config?.rewards?.[0]?.type ?? '—';
-    const newType = newConfig.rewards_config?.rewards?.[0]?.type ?? '—';
-    lines.push(`**${i18n.reward_type_changed}:** ~~${oldType}~~ → ${newType}`);
-  }
-
-  if (changes.sku_id) {
-    const oldSku = oldConfig.rewards_config?.rewards?.[0]?.sku_id || '—';
-    const newSku = newConfig.rewards_config?.rewards?.[0]?.sku_id || '—';
-    lines.push(`**${i18n.sku_changed}:** ~~\`${oldSku}\`~~ → \`${newSku}\``);
+  // Reward type + sku fold into the single real `reward_changed` key —
+  // i18n has one "reward changed" concept, not separate ones per field.
+  if (changes.reward_type || changes.sku_id) {
+    const oldReward = oldConfig.rewards_config?.rewards?.[0] || {};
+    const newReward = newConfig.rewards_config?.rewards?.[0] || {};
+    const oldLabel = i18n.rewards[String(oldReward.type)] || i18n.error.reward_type;
+    const newLabel = i18n.rewards[String(newReward.type)] || i18n.error.reward_type;
+    lines.push(
+      `**${i18n.reward_changed}:** ~~${oldLabel} (\`${oldReward.sku_id || '—'}\`)~~ → ${newLabel} (\`${newReward.sku_id || '—'}\`)`
+    );
   }
 
   if (changes.hero_image) {
     const oldHero = oldConfig.assets?.hero ? `https://cdn.discordapp.com/${oldConfig.assets.hero}` : '—';
     const newHero = newConfig.assets?.hero ? `https://cdn.discordapp.com/${newConfig.assets.hero}` : '—';
-    lines.push(`**${i18n.hero_image_changed}:** ~~${oldHero}~~ → ${newHero}`);
+    lines.push(`**${i18n.hero_image_changed || '🖼️ Ảnh Hero'}:** ~~${oldHero}~~ → ${newHero}`);
   }
 
   if (changes.hero_video) {
-    const oldV = oldConfig.assets?.hero_video || oldConfig.assets?.quest_bar_hero_video || '—';
-    const newV = newConfig.assets?.hero_video || newConfig.assets?.quest_bar_hero_video || '—';
-    lines.push(`**${i18n.hero_video_changed}:** ~~${oldV ? `\`${oldV}\`` : '—'}~~ → ${newV ? `\`${newV}\`` : '—'}`);
+    const oldV = oldConfig.assets?.hero_video || oldConfig.assets?.quest_bar_hero_video || '';
+    const newV = newConfig.assets?.hero_video || newConfig.assets?.quest_bar_hero_video || '';
+    lines.push(`**${i18n.hero_video_changed || '🎬 Video Hero'}:** ~~${oldV ? `\`${oldV}\`` : '—'}~~ → ${newV ? `\`${newV}\`` : '—'}`);
   }
 
   if (changes.quest_name) {
     const oldName = oldConfig.messages?.quest_name || '—';
     const newName = newConfig.messages?.quest_name || '—';
-    lines.push(`**${i18n.quest_name_changed}:** ~~${oldName}~~ → ${newName}`);
+    lines.push(`**${i18n.quest_name_changed || '📝 Tên Quest'}:** ~~${oldName}~~ → ${newName}`);
   }
 
   if (changes.features) {
-    const oldF = Array.isArray(oldConfig.features) ? oldConfig.features.join(',') : (oldConfig.features || '—');
-    const newF = Array.isArray(newConfig.features) ? newConfig.features.join(',') : (newConfig.features || '—');
-    lines.push(`**${i18n.features_changed}:** ~~${oldF}~~ → ${newF}`);
+    const oldF = Array.isArray(oldConfig.features) ? oldConfig.features.join(', ') : (oldConfig.features || '—');
+    const newF = Array.isArray(newConfig.features) ? newConfig.features.join(', ') : (newConfig.features || '—');
+    lines.push(`**${i18n.features_changed || '🧩 Tính Năng'}:** ~~${oldF}~~ → ${newF}`);
   }
 
   if (changes.application_id) {
     const oldApp = oldConfig.application?.id || '—';
     const newApp = newConfig.application?.id || '—';
-    lines.push(`**${i18n.application_changed}:** ~~${oldApp}~~ → ${newApp}`);
+    lines.push(`**${i18n.application_changed || '🔗 Ứng Dụng'}:** ~~\`${oldApp}\`~~ → \`${newApp}\``);
   }
 
   if (changes.cta_link) {
     const oldCta = oldConfig.cta_config?.link || '—';
     const newCta = newConfig.cta_config?.link || '—';
-    lines.push(`**${i18n.cta_changed}:** ~~${oldCta}~~ → ${newCta}`);
+    lines.push(`**${i18n.cta_changed || '🔗 Link CTA'}:** ~~${oldCta}~~ → ${newCta}`);
   }
 
   return lines.join('\n');
