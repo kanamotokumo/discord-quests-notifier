@@ -251,8 +251,8 @@
                 }
               ],
               "external_ids": [
-                "PPSA27360_00",
-                "CUSA52342_00"
+                "CUSA52342_00",
+                "PPSA27360_00"
               ]
             }
           },
@@ -288,10 +288,11 @@
       },
       "hash": "eyJxdWVzdF9uYW1lIjoiRUFGQyB4IFRoZSBXb3JsZCdzIEdhbWUiLCJnYW1lX3RpdGxlIjoiRUEgU1BPUlRTIEZDIDI2IiwiZ2FtZV9wdWJsaXNoZXIiOiJFbGVjdHJvbmljIEFydHMiLCJhcHBsaWNhdGlvbl9pZCI6IjE0MjExNTQ3MjYwMjM1MzI1NDQiLCJhcHBsaWNhdGlvbl9uYW1lIjoiRUEgU1BPUlRTIEZDIDI2Iiwic3RhcnRzX2F0IjoiMjAyNi0wNy0wM1QxNzowMDowMCswMDowMCIsImV4cGlyZXNfYXQiOiIyMDI2LTA3LTIwVDA2OjU5OjAwKzAwOjAwIiwicmV3YXJkX2V4cGlyZXNfYXQiOiIyMDI2LTA4LTE5VDA2OjU5OjAwKzAwOjAwIiwiZmVhdHVyZXMiOlsxNV0sInBsYXRmb3JtcyI6WyJQQyIsIlBsYXlTdGF0aW9uIiwiWGJveCJdLCJ0YXNrcyI6W3sia2V5IjoiUExBWV9PTl9ERVNLVE9QIiwidHlwZSI6IlBMQVlfT05fREVTS1RPUCIsInRhcmdldCI6OTAwfSx7ImtleSI6IlBMQVlfT05fUExBWVNUQVRJT04iLCJ0eXBlIjoiUExBWV9PTl9QTEFZU1RBVElPTiIsInRhcmdldCI6OTAwfSx7ImtleSI6IlBMQVlfT05fWEJPWCIsInR5cGUiOiJQTEFZX09OX1hCT1giLCJ0YXJnZXQiOjkwMH1dfQ==",
       "starts_at": "2026-07-03T17:00:00+00:00",
-      "expires_at": "2026-08-19T06:59:00+00:00",
+      "expires_at": "2026-07-20T06:59:00+00:00",
       "sent_at": "2026-07-15T13:45:30.370Z",
-      "type": "new"
+      "type": "updated",
+      "updated_at": "2026-07-15T16:23:00.696Z"
     }
   },
-  "last_check": "2026-07-15T13:45:31.473Z"
+  "last_check": "2026-07-15T16:23:01.798Z"
 }
